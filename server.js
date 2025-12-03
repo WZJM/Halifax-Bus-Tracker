@@ -12,7 +12,7 @@ const GTFS_URL = 'https://gtfs.halifax.ca/realtime/Vehicle/VehiclePositions.pb';
 // We will store the data here and only update it if 15 seconds have passed.
 let cachedData = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 15000; // 15 seconds in milliseconds
+const CACHE_DURATION = 5000; // 5 seconds in milliseconds
 
 // ALLOW CORS
 app.use((req, res, next) => {
