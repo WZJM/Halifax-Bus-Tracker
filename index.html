@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Halifax Bus Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100%; } /* Map covers full screen */
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. Initialize the map centered on Halifax
+        const map = L.map('map').setView([44.6488, -63.5752], 13);
+
+        // 2. Add the background map tiles (using OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Storage for markers so we can update them instead of redrawing every time
+        let busMarkers = {};
+
+        // 3. Function to fetch data from OUR backend
+        async function updateBuses() {
+            try {
+                // Fetch from the local server we built
+                const response = await fetch('http://localhost:3000/buses');
+                const buses = await response.json();
+                
+                // Checking if the website is working
+                console.log(`Updated! Found ${buses.length} buses. Time: ${new Date().toLocaleTimeString()}`);
+
+                // Loop through each bus found
+                buses.forEach(bus => {
+                    const busId = bus.id;
+                    const lat = bus.latitude;
+                    const lon = bus.longitude;
+                    const route = bus.routeId;
+
+                    // If we already have a marker for this bus, just move it
+                    if (busMarkers[busId]) {
+                        busMarkers[busId].setLatLng([lat, lon]);
+                        busMarkers[busId].bindPopup(`<b>Route ${route}</b><br>Bus ID: ${busId}`);
+                    } 
+                    // Otherwise, create a new marker
+                    else {
+                        const marker = L.marker([lat, lon]).addTo(map);
+                        marker.bindPopup(`<b>Route ${route}</b><br>Bus ID: ${busId}`);
+                        busMarkers[busId] = marker;
+                    }
+                });
+            } catch (error) {
+                console.error("Error loading bus data:", error);
+            }
+        }
+
+        // 4. Update the map every 5 seconds
+        updateBuses();
+        setInterval(updateBuses, 15000);
+    </script>
+</body>
+</html>
