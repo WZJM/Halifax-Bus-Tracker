@@ -29,7 +29,7 @@
         async function updateBuses() {
             try {
                 // Fetch from the local server we built
-                const response = await fetch('http://localhost:3000/buses');
+                const response = await fetch('https://halifax-bus-tracker-backend.onrender.com/buses');
                 const buses = await response.json();
                 
                 // Checking if the website is working
