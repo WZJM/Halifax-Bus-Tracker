@@ -2,84 +2,30 @@
 <html>
 <head>
     <title>Halifax Bus Tracker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚌</text></svg>">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
-    <style></style>
 </head>
 <body>
-    
-    <div id="info">
-        <h2>Thanks for using Halifax Bus Tracker!</h2>
-        <p>Current time:
-            <time id="current-time"></time>
-        </p>
-        <script>
-        //Updating time
-        function updateTime() {
-            const timeElement = document.getElementById("current-time");
-            const now = new Date();
-            const formattedTime = now.toLocaleTimeString(); 
-            timeElement.textContent = formattedTime;
-            timeElement.setAttribute("datetime", now.toISOString());
-        }
+    <div id="navbar">
+        <div class="nav-title" id="txt-nav-title">HRM Bus Tracker</div>
+        <div class="nav-buttons">
+            <button class="lang-btn" onclick="setLanguage('en')">EN</button>
+            <button class="lang-btn" onclick="setLanguage('zh')">中文</button>
+        </div>
+    </div>
 
-        // Start the clock immediately and update every second
-        updateTime();
-        setInterval(updateTime, 1000);
-        </script>
+    <div id="info">
+        <h2 id="txt-welcome">Thanks for using HRM Bus Tracker!</h2>
+        <p>
+            <span id="txt-time">Current Time:</span>
+            <time id="current-time">Loading...</time>
+        </p>
     </div>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // 1. Initialize the map centered on Halifax
-        const map = L.map('map').setView([44.6488, -63.5752], 13);
-
-        // 2. Add the background map tiles (using OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Storage for markers so we can update them instead of redrawing every time
-        let busMarkers = {};
-
-        // 3. Function to fetch data from OUR backend
-        async function updateBuses() {
-            try {
-                // Fetch from the local server we built
-                const response = await fetch('https://halifax-bus-tracker-backend.onrender.com/buses');
-                const buses = await response.json();
-                
-                // Checking if the website is working
-                console.log(`Updated! Found ${buses.length} buses. Time: ${new Date().toLocaleTimeString()}`);
-
-                // Loop through each bus found
-                buses.forEach(bus => {
-                    const busId = bus.id;
-                    const lat = bus.latitude;
-                    const lon = bus.longitude;
-                    const route = bus.routeId;
-
-                    // If we already have a marker for this bus, just move it
-                    if (busMarkers[busId]) {
-                        busMarkers[busId].setLatLng([lat, lon]);
-                        busMarkers[busId].bindPopup(`<b>Route ${route}</b><br>Bus ID: ${busId}`);
-                    } 
-                    // Otherwise, create a new marker
-                    else {
-                        const marker = L.marker([lat, lon]).addTo(map);
-                        marker.bindPopup(`<b>Route ${route}</b><br>Bus ID: ${busId}`);
-                        busMarkers[busId] = marker;
-                    }
-                });
-            } catch (error) {
-                console.error("Error loading bus data:", error);
-            }
-        }
-
-        // 4. Update the map every 5 seconds
-        updateBuses();
-        setInterval(updateBuses, 5000);
-    </script>
+    
+    <script src="script.js"></script>
 </body>
 </html>
