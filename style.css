@@ -44,6 +44,49 @@ html, body {
     border-color: #1abc9c; 
 }
 
+    /* Warning button style */
+#warning-btn {
+    display: none; /* Hidden by default */
+    position: absolute;
+    top: 70px;  /* Aligned with the Info box */
+    left: 60px; /* Top Left side */
+    z-index: 1000;
+    background-color: #e74c3c;
+    color: white;
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    
+    /* Button specific resets (Critical for <button> tags) */
+    border: none;         /* Removes the default gray border */
+    padding: 0;           /* Removes default padding */
+    cursor: pointer;
+    
+    /* Animation & Centering */
+    display: flex;             /* This will be overridden by JS 'none' initially, but used when 'flex' is set */
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 8px;
+    
+    
+    animation: pulse 2s infinite;
+}
+
+/* A hover effect */
+#warning-btn:hover {
+    background-color: #c0392b; /* Slightly darker red on hover */
+}
+
+
+/* Simple flashing animation */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
     /* Map style */
 #map { 
     height: calc(100vh - 50px);
