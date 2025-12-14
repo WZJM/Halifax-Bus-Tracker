@@ -7,10 +7,18 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <h3 id="txt-loading-msg">Connecting to server...<br>This may take up to 40 seconds if the server is waking up.</h3>
+    </div>
+    
+    
     <div id="navbar">
         <div class="nav-title" id="txt-nav-title">HRM Bus Tracker</div>
         <div class="nav-buttons">
             <button class="lang-btn" onclick="setLanguage('en')">EN</button>
+            <button class="lang-btn" onclick="setLanguage('fr')">FR</button>
             <button class="lang-btn" onclick="setLanguage('zh')">中文</button>
         </div>
     </div>
@@ -20,7 +28,7 @@
     </div>
 
     <div id="info">
-        <h2 id="txt-welcome">Thanks for using HRM Bus Tracker!</h2>
+        <h2 id="txt-welcome">Thank you for using HRM Bus Tracker!</h2>
         <p>
             <span id="txt-time">Current Time:</span>
             <time id="current-time">Loading...</time>
