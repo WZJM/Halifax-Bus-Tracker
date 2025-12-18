@@ -94,7 +94,7 @@ const map = L.map('map').setView([44.6488, -63.5752], 13);
     //Stale data detector variables
     let lastBusesJson = "";   // Stores the previous data as a string
     let staleCount = 0;       // Counts how many times data was identical
-    const STALE_THRESHOLD = 15; // If data is same 15 times (75 seconds), show alert
+    const STALE_THRESHOLD = 10; // If data is same 10 times (50 seconds), show alert
 
     //Function to show error detail
     function showErrorDetail() {
