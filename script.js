@@ -142,18 +142,35 @@ async function updateBuses() {
 
         buses.forEach(bus => {
             const routeLabel = translations[currentLang].routeLabel;
-    const busLabel = translations[currentLang].busLabel;
+            const busLabel = translations[currentLang].busLabel;
             const popupContent = `<b>${routeLabel} ${bus.routeId}</b><br>${busLabel}: ${bus.id}`;
+
+            const customIcon = L.divIcon({
+                className: 'custom-bus-icon-wrapper', 
+                html: `
+                    <div class="bus-marker-container">
+                        <div class="arrow-orbit" style="transform: rotate(${bus.bearing}deg);">
+                            <div class="bus-arrow"></div>
+                        </div>
+                        
+                        <div class="bus-box">${bus.routeId}</div>
+                    </div>
+                `,
+                iconSize: [30, 30], 
+                iconAnchor: [15, 15] 
+            });
 
             if (busMarkers[bus.id]) {
                 busMarkers[bus.id].setLatLng([bus.latitude, bus.longitude]);
+                busMarkers[bus.id].setIcon(customIcon);
                 busMarkers[bus.id].getPopup().setContent(popupContent);
             } else {
-                const marker = L.marker([bus.latitude, bus.longitude]).addTo(map);
+                const marker = L.marker([bus.latitude, bus.longitude], {icon: customIcon}).addTo(map);
                 marker.bindPopup(popupContent);
                 busMarkers[bus.id] = marker;
             }
         });
+
     } catch (error) {
         console.error("Error loading bus data:", error);
         // If the server crashes entirely, also show the warning
