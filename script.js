@@ -9,7 +9,8 @@ const translations = {
         errorMessage: "Sorry, we are currently unable to gain real-time data from Halifax Transit due to unknown reasons on their end. The locations shown on the map may be inaccurate.",
         serverWaking: "Connecting to server...\nThis may take up to 40 seconds if the server is waking up.",
         routeLabel: "Route",
-        busLabel: "Bus ID"
+        busLabel: "Bus ID",
+        locationPopup: "You are here"
     },
     fr: {
         navTitle: "Info-bus HRM",
@@ -20,7 +21,8 @@ const translations = {
         errorMessage: "Nous sommes désolés, mais nous ne pouvons actuellement pas obtenir de données en temps réel de Halifax Transit pour des raisons inconnues de leur côté. Les emplacements affichés sur la carte peuvent donc être inexacts.",
         serverWaking: "Connexion au serveur...\nCela peut prendre jusqu'à 40 secondes si le serveur est en cours de démarrage.",
         routeLabel: "Route",
-        busLabel: "ID du Bus"
+        busLabel: "ID du Bus",
+        locationPopup: "Vous êtes ici"
     },
     zh: {
         navTitle: "哈利法克斯公交追踪器",
@@ -31,7 +33,8 @@ const translations = {
         errorMessage: "抱歉，由于哈利法克斯公交公司数据问题，我们目前无法获取实时数据。地图上显示的公交位置可能不准确。",
         serverWaking: "正在连接服务器...\n如果服务器正在唤醒,可能需要等待40秒。",
         routeLabel: "线路",
-        busLabel: "公交 ID"
+        busLabel: "公交 ID",
+        locationPopup: "您在这里"
     }
 };
 // Time formating dictionary
@@ -58,7 +61,17 @@ function setLanguage(lang) {
     document.getElementById('txt-welcome').textContent = translations[lang].welcome;
     document.getElementById('txt-time').textContent = translations[lang].timeLabel;
     document.getElementById('txt-loading-msg').textContent = translations[lang].serverWaking;
+
+    if (userMarker) {
+        userMarker.setPopupContent(translations[lang].locationPopup);
+    }
     
+/*     if (busMarkers) {
+        const routeLabel = translations[currentLang].routeLabel;
+        const busLabel = translations[currentLang].busLabel;
+        busMarkers.setPopupContent(`<b>${routeLabel} ${bus.routeId}</b><br>${busLabel}: ${bus.id}`);
+    } */
+
     // Update the time immediately so it doesn't wait 1 second to translate
     updateTime(); 
 }
@@ -143,7 +156,7 @@ async function updateBuses() {
         buses.forEach(bus => {
             const routeLabel = translations[currentLang].routeLabel;
             const busLabel = translations[currentLang].busLabel;
-            const popupContent = `<b>${routeLabel} ${bus.routeId}</b><br>${busLabel}: ${bus.id}`;
+            const popupContentBus = `<b>${routeLabel} ${bus.routeId}</b><br>${busLabel}: ${bus.id}`;    
 
             const customIcon = L.divIcon({
                 className: 'custom-bus-icon-wrapper', 
@@ -163,10 +176,10 @@ async function updateBuses() {
             if (busMarkers[bus.id]) {
                 busMarkers[bus.id].setLatLng([bus.latitude, bus.longitude]);
                 busMarkers[bus.id].setIcon(customIcon);
-                busMarkers[bus.id].getPopup().setContent(popupContent);
+                busMarkers[bus.id].getPopup().setContent(popupContentBus);
             } else {
                 const marker = L.marker([bus.latitude, bus.longitude], {icon: customIcon}).addTo(map);
-                marker.bindPopup(popupContent);
+                marker.bindPopup(popupContentBus);
                 busMarkers[bus.id] = marker;
             }
         });
@@ -181,3 +194,49 @@ async function updateBuses() {
         // Update the map every 5 seconds
         updateBuses();
         setInterval(updateBuses, 5000);
+
+        // Function to locate user
+let userMarker = null;
+
+function locateUser() {
+    const locationPopupContent = translations[currentLang].locationPopup;
+    
+    // Check if browser supports geolocation
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+    }
+
+    // Ask for location
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            // Fly the map to the user
+            map.setView([lat, lng], 15);
+
+            // Create a "You are Here" marker (Red pulsing dot)
+            if (userMarker) {
+                userMarker.setLatLng([lat, lng]);
+                userMarker.setPopupContent(locationPopupContent); 
+                userMarker.openPopup();
+            } else {
+                // Simple red circle marker
+                userMarker = L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: "#e74c3c",
+                    color: "#fff",
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                userMarker.bindPopup(locationPopupContent).openPopup();
+            }
+        },
+        () => {
+            alert("Unable to retrieve your location. Please check your browser permissions.");
+        }
+    );
+}
