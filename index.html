@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Halifax Bus Tracker</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚌</text></svg>">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -21,6 +22,15 @@
             <button class="lang-btn" onclick="setLanguage('fr')">FR</button>
             <button class="lang-btn" onclick="setLanguage('zh')">中文</button>
         </div>
+    </div>
+
+<div id="search-container">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="route-search" placeholder="Search Route (e.g. 1, 90)...">
+            <button id="clear-search" onclick="clearSelection()" style="display:none;">✕</button>
+        </div>
+        <div id="route-list" class="route-list-hidden"></div>
     </div>
 
     <div id="warning">

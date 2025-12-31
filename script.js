@@ -10,7 +10,10 @@ const translations = {
         serverWaking: "Connecting to server...\nThis may take up to 40 seconds if the server is waking up.",
         routeLabel: "Route",
         busLabel: "Bus ID",
-        locationPopup: "You are here"
+        locationPopup: "You are here",
+        locationNotSupportedAlert: "Geolocation is not supported by your browser",
+        locationAlert: "Unable to retrieve your location. Please check your browser permissions.",
+        searchPlaceholder: "Search Route (e.g. 1, 90)..."
     },
     fr: {
         navTitle: "Info-bus HRM",
@@ -20,9 +23,12 @@ const translations = {
         errorTitle: "Erreur de flux de données",
         errorMessage: "Nous sommes désolés, mais nous ne pouvons actuellement pas obtenir de données en temps réel de Halifax Transit pour des raisons inconnues de leur côté. Les emplacements affichés sur la carte peuvent donc être inexacts.",
         serverWaking: "Connexion au serveur...\nCela peut prendre jusqu'à 40 secondes si le serveur est en cours de démarrage.",
-        routeLabel: "Route",
+        routeLabel: "Ligne",
         busLabel: "ID du Bus",
-        locationPopup: "Vous êtes ici"
+        locationPopup: "Vous êtes ici",
+        locationNotSupportedAlert: "La géolocalisation n'est pas prise en charge par votre navigateur",
+        locationAlert: "Impossible de récupérer votre position. Veuillez vérifier les autorisations de votre navigateur.",
+        searchPlaceholder: "Chercher un itinéraire..."
     },
     zh: {
         navTitle: "哈利法克斯公交追踪器",
@@ -34,7 +40,10 @@ const translations = {
         serverWaking: "正在连接服务器...\n如果服务器正在唤醒,可能需要等待40秒。",
         routeLabel: "线路",
         busLabel: "公交 ID",
-        locationPopup: "您在这里"
+        locationPopup: "您在这里",
+        locationNotSupportedAlert: "您的浏览器不支持地理位置功能",
+        locationAlert: "无法获取您的位置。请检查浏览器权限。",
+        searchPlaceholder: "搜索线路..."
     }
 };
 // Time formating dictionary
@@ -61,17 +70,33 @@ function setLanguage(lang) {
     document.getElementById('txt-welcome').textContent = translations[lang].welcome;
     document.getElementById('txt-time').textContent = translations[lang].timeLabel;
     document.getElementById('txt-loading-msg').textContent = translations[lang].serverWaking;
+    document.getElementById('route-search').placeholder = translations[lang].searchPlaceholder;
 
     if (userMarker) {
         userMarker.setPopupContent(translations[lang].locationPopup);
     }
-    
-/*     if (busMarkers) {
-        const routeLabel = translations[currentLang].routeLabel;
-        const busLabel = translations[currentLang].busLabel;
-        busMarkers.setPopupContent(`<b>${routeLabel} ${bus.routeId}</b><br>${busLabel}: ${bus.id}`);
-    } */
 
+    Object.values(busMarkers).forEach(marker => {
+        if (marker.busData) {
+            // Get the new labels (e.g., "Route" or "路线")
+            const routeLabel = translations[lang].routeLabel;
+            const busLabel = translations[lang].busLabel;
+            
+            // Re-create the popup string using the saved busData
+            const newContent = `<b>${routeLabel} ${marker.busData.routeId}</b><br>${busLabel}: ${marker.busData.id}`;
+            
+            // Update the text immediately
+            marker.setPopupContent(newContent);
+        }
+    }); 
+
+    if (currentBusData.length > 0) {
+        // Clear the cache so the function thinks it's new data
+        availableRoutes.clear(); 
+        // Re-run the builder with the current data
+        updateRouteDropdown(currentBusData); 
+    }
+    
     // Update the time immediately so it doesn't wait 1 second to translate
     updateTime(); 
 }
@@ -104,10 +129,11 @@ const map = L.map('map').setView([44.6488, -63.5752], 13);
 
     let busMarkers = {};
 
-    //Stale data detector variables
-    let lastBusesJson = "";   // Stores the previous data as a string
-    let staleCount = 0;       // Counts how many times data was identical
-    const STALE_THRESHOLD = 10; // If data is same 10 times (50 seconds), show alert
+    // Search & Filter Variables
+    let selectedRoutes = new Set(); // Stores specific routes user has checked (e.g. "90", "1")
+    let availableRoutes = new Set(); // Stores all routes currently available from the API
+
+    let currentBusData = [];
 
     //Function to show error detail
     function showErrorDetail() {
@@ -121,7 +147,22 @@ let isFirstLoad = true;
 async function updateBuses() {
     try {
         const response = await fetch('https://halifax-bus-tracker-backend.onrender.com/buses');
+        
+        // --- NEW: READ SERVER HEADER ---
+        const serverStaleCount = response.headers.get('X-Stale-Count');
+        const warningBtn = document.getElementById("warning-btn");
+        
+        // If server says data is old (e.g. 5+ stale fetches = 75 seconds), show warning
+        if (serverStaleCount && parseInt(serverStaleCount) >= 5) {
+             warningBtn.style.display = "flex";
+             console.warn(`Server reports stale data. Count: ${serverStaleCount}`);
+        } else {
+             warningBtn.style.display = "none";
+        }
+
         const buses = await response.json();
+        
+        currentBusData = buses;
 
         if (isFirstLoad) {
             const loadingOverlay = document.getElementById('loading-overlay');
@@ -131,29 +172,22 @@ async function updateBuses() {
             isFirstLoad = false; // Never show it again for this session
         }
 
-        // Check for stale data
-        const currentBusesJson = JSON.stringify(buses);
-        const warningBtn = document.getElementById("warning-btn");
+        // 1. First, update the dropdown list with the latest data
+        updateRouteDropdown(buses);
 
-        // If the new data is exactly the same as the old data
-        if (currentBusesJson === lastBusesJson && buses.length > 0) {
-            staleCount++;
-        } else {
-            // Data changed! Reset the counter and hide warning
-            staleCount = 0;
-            warningBtn.style.display = "none";
-        }
-
-        // Save for next time
-        lastBusesJson = currentBusesJson;
-
-        // If we have hit the threshold, show the red icon
-        if (staleCount >= STALE_THRESHOLD) {
-            warningBtn.style.display = "flex";
-            console.warn("Halifax Transit feed appears stuck.");
-        }
-
+        // 2. Track which buses are valid in this update
+        const activeBusIds = new Set();
+        
         buses.forEach(bus => {
+            // --- FILTER LOGIC ---
+            // If we have selected routes, and this bus IS NOT in the selection, skip it.
+            if (selectedRoutes.size > 0 && !selectedRoutes.has(bus.routeId)) {
+                return; // Do not process this bus
+            }
+            // --------------------
+
+            activeBusIds.add(bus.id); // Mark as active
+
             const routeLabel = translations[currentLang].routeLabel;
             const busLabel = translations[currentLang].busLabel;
             const popupContentBus = `<b>${routeLabel} ${bus.routeId}</b><br>${busLabel}: ${bus.id}`;    
@@ -177,10 +211,25 @@ async function updateBuses() {
                 busMarkers[bus.id].setLatLng([bus.latitude, bus.longitude]);
                 busMarkers[bus.id].setIcon(customIcon);
                 busMarkers[bus.id].getPopup().setContent(popupContentBus);
+                busMarkers[bus.id].busData = bus;
+
+                if (!map.hasLayer(busMarkers[bus.id])) {
+                    busMarkers[bus.id].addTo(map);
+                }
             } else {
                 const marker = L.marker([bus.latitude, bus.longitude], {icon: customIcon}).addTo(map);
                 marker.bindPopup(popupContentBus);
+                marker.busData = bus;
                 busMarkers[bus.id] = marker;
+            }
+            
+        });
+
+        Object.keys(busMarkers).forEach(id => {
+            if (!activeBusIds.has(id)) {
+                map.removeLayer(busMarkers[id]);
+                // NOTE: We don't delete it from memory completely so it comes back instantly if un-filtered
+                // But removing from map is enough to hide it.
             }
         });
 
@@ -203,7 +252,7 @@ function locateUser() {
     
     // Check if browser supports geolocation
     if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser");
+        alert(translations[currentLang].locationNotSupportedAlert);
         return;
     }
 
@@ -236,7 +285,126 @@ function locateUser() {
             }
         },
         () => {
-            alert("Unable to retrieve your location. Please check your browser permissions.");
+            alert(translations[currentLang].locationAlert);
         }
     );
+}
+
+// --- SEARCH & FILTER FUNCTIONS ---
+
+// 1. Toggle the list when clicking the search bar
+const searchInput = document.getElementById('route-search');
+const routeList = document.getElementById('route-list');
+const clearBtn = document.getElementById('clear-search');
+
+searchInput.addEventListener('focus', () => {
+    routeList.classList.add('active');
+});
+
+// Hide list if clicking outside (optional polish)
+document.addEventListener('click', (e) => {
+    const container = document.getElementById('search-container');
+    if (!container.contains(e.target)) {
+        routeList.classList.remove('active');
+    }
+});
+
+// 2. Filter the checkbox list as user types
+searchInput.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.route-item');
+    
+    items.forEach(item => {
+        const routeId = item.getAttribute('data-route');
+        if (routeId.toLowerCase().includes(term)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+// 3. Clear everything
+function clearSelection() {
+    selectedRoutes.clear();
+    searchInput.value = '';
+    clearBtn.style.display = 'none';
+    
+    // Uncheck all boxes
+    document.querySelectorAll('.route-checkbox').forEach(cb => cb.checked = false);
+    
+    // Show all items in list again
+    document.querySelectorAll('.route-item').forEach(item => item.style.display = 'flex');
+    
+    updateBuses(); // Refresh map to show all
+}
+
+// 4. Update the Selection Set
+function toggleRoute(routeId, isChecked) {
+    if (isChecked) {
+        selectedRoutes.add(routeId);
+    } else {
+        selectedRoutes.delete(routeId);
+    }
+    
+    // Show/Hide "X" button
+    if (selectedRoutes.size > 0) {
+        clearBtn.style.display = 'block';
+    } else {
+        clearBtn.style.display = 'none';
+    }
+    
+    updateBuses(); // Refresh map immediately
+}
+
+// 5. Build the Dropdown List
+function updateRouteDropdown(buses) {
+    // Extract all unique route IDs from the current data
+    const currentRoutes = new Set(buses.map(b => b.routeId).sort((a, b) => {
+        // Sort numerically (1, 2, 10) instead of alphabetically (1, 10, 2)
+        return a.localeCompare(b, undefined, { numeric: true });
+    }));
+
+    // If the available routes haven't changed, don't rebuild the DOM (saves performance)
+    if (areSetsEqual(currentRoutes, availableRoutes)) return;
+
+    availableRoutes = currentRoutes;
+    routeList.innerHTML = ""; // Clear list
+
+    availableRoutes.forEach(routeId => {
+        const div = document.createElement('div');
+        div.className = 'route-item';
+        div.setAttribute('data-route', routeId);
+        
+        // Check if it was already selected
+        const isChecked = selectedRoutes.has(routeId) ? 'checked' : '';
+
+        div.innerHTML = `
+            <input type="checkbox" class="route-checkbox" ${isChecked} value="${routeId}">
+            <span class="route-name">${translations[currentLang].routeLabel} ${routeId}</span>
+        `;
+        
+        // Add click event to the checkbox
+        const checkbox = div.querySelector('input');
+        checkbox.addEventListener('change', (e) => {
+            toggleRoute(routeId, e.target.checked);
+        });
+
+        // Add click event to the row (for better UX)
+        div.addEventListener('click', (e) => {
+            if (e.target !== checkbox) {
+                checkbox.checked = !checkbox.checked;
+                toggleRoute(routeId, checkbox.checked);
+            }
+        });
+
+        routeList.appendChild(div);
+    });
+}
+
+// Helper to compare Sets
+function areSetsEqual(a, b) {
+    if (a.size !== b.size) return false;
+    for (const item of a) if (!b.has(item)) return false;
+    return true;
 }
