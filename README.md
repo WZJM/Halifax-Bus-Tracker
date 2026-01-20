@@ -35,6 +35,7 @@ This project visualizes real-time GTFS (General Transit Feed Specification) data
 ├── style.css       # Responsive styling, animations, and map overrides
 ├── script.js       # Core logic: Map rendering, API fetching, Localization
 └── README.md       # Project documentation
+```
 
 ## 📄 Credits & Data
 
