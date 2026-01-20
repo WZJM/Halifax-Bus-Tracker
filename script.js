@@ -135,6 +135,8 @@ const map = L.map('map').setView([44.6488, -63.5752], 13);
 
     let currentBusData = [];
 
+    let routeNames = {}; // Stores "90": "Larry Uteck"
+
     //Function to show error detail
     function showErrorDetail() {
     const title = translations[currentLang].errorTitle;
@@ -190,7 +192,12 @@ async function updateBuses() {
 
             const routeLabel = translations[currentLang].routeLabel;
             const busLabel = translations[currentLang].busLabel;
-            const popupContentBus = `<b>${routeLabel} ${bus.routeId}</b><br>${busLabel}: ${bus.id}`;    
+            const name = routeNames[bus.routeId] ? ` (${routeNames[bus.routeId]})` : "";
+            
+            const popupContentBus = `
+                <b>${routeLabel} ${bus.routeId}</b>${name}<br>
+                ${busLabel}: ${bus.id}
+            `;    
 
             const customIcon = L.divIcon({
                 className: 'custom-bus-icon-wrapper', 
@@ -243,6 +250,25 @@ async function updateBuses() {
         // Update the map every 5 seconds
         updateBuses();
         setInterval(updateBuses, 5000);
+
+        // --- ROUTE NAMES FETCHER ---
+async function fetchRouteNames() {
+    try {
+        const response = await fetch('https://halifax-bus-tracker-backend.onrender.com/routes');
+        routeNames = await response.json();
+        console.log("Route names loaded.");
+        
+        // If we already have bus data, refresh the list immediately to show names
+        if (currentBusData.length > 0) {
+            updateRouteDropdown(currentBusData);
+        }
+    } catch (error) {
+        console.error("Failed to load route names:", error);
+    }
+}
+
+        // Call this on startup!
+        fetchRouteNames();
 
         // Function to locate user
 let userMarker = null;
@@ -359,38 +385,50 @@ function toggleRoute(routeId, isChecked) {
 
 // 5. Build the Dropdown List
 function updateRouteDropdown(buses) {
-    // Extract all unique route IDs from the current data
-    const currentRoutes = new Set(buses.map(b => b.routeId).sort((a, b) => {
-        // Sort numerically (1, 2, 10) instead of alphabetically (1, 10, 2)
-        return a.localeCompare(b, undefined, { numeric: true });
-    }));
+    // Get routes currently active on the road
+    const liveRoutes = new Set(buses.map(b => b.routeId));
 
-    // If the available routes haven't changed, don't rebuild the DOM (saves performance)
-    if (areSetsEqual(currentRoutes, availableRoutes)) return;
+    // Get ALL routes from our static file (The Master List)
+    // If the static file hasn't loaded yet, default to just the live routes
+    const staticRouteIds = Object.keys(routeNames);
+    const allRouteIds = staticRouteIds.length > 0 ? staticRouteIds : Array.from(liveRoutes);
 
-    availableRoutes = currentRoutes;
-    routeList.innerHTML = ""; // Clear list
+    // 3. Combine and Sort
+    const sortedRoutes = allRouteIds.sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.replace(/\D/g, '')) || 0;
+        if (numA === numB) return a.localeCompare(b);
+        return numA - numB;
+    });
 
-    availableRoutes.forEach(routeId => {
+    // Check if list needs update (Logic: size changed or static data finally arrived)
+    if (areSetsEqual(new Set(sortedRoutes), availableRoutes) && staticRouteIds.length === 0) return;
+
+    availableRoutes = new Set(sortedRoutes);
+    routeList.innerHTML = "";
+
+    sortedRoutes.forEach(routeId => {
         const div = document.createElement('div');
         div.className = 'route-item';
         div.setAttribute('data-route', routeId);
         
-        // Check if it was already selected
         const isChecked = selectedRoutes.has(routeId) ? 'checked' : '';
-
+        const routeLabel = translations[currentLang].routeLabel; // "Route"
+        
+        // --- NEW: Get the name ---
+        const name = routeNames[routeId] || ""; 
+        // e.g., "90 Larry Uteck"
+        
         div.innerHTML = `
             <input type="checkbox" class="route-checkbox" ${isChecked} value="${routeId}">
-            <span class="route-name">${translations[currentLang].routeLabel} ${routeId}</span>
+            <div class="route-info">
+                <span class="route-number"><b>${routeId}</b></span>
+                <span class="route-desc">${name}</span>
+            </div>
         `;
         
-        // Add click event to the checkbox
         const checkbox = div.querySelector('input');
-        checkbox.addEventListener('change', (e) => {
-            toggleRoute(routeId, e.target.checked);
-        });
-
-        // Add click event to the row (for better UX)
+        checkbox.addEventListener('change', (e) => toggleRoute(routeId, e.target.checked));
         div.addEventListener('click', (e) => {
             if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
