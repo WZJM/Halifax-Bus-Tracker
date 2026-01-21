@@ -137,8 +137,34 @@ const map = L.map('map').setView([44.6488, -63.5752], 13);
 
     let routeNames = {}; // Stores "90": "Larry Uteck"
 
+
+
+    // --- FAVORITES SYSTEM ---
+const FAV_STORAGE_KEY = "hrm_bus_favs";
+
+function getFavorites() {
+    return new Set(JSON.parse(localStorage.getItem(FAV_STORAGE_KEY)) || []);
+}
+
+function toggleFavorite(routeId) {
+    const favs = getFavorites();
+    
+    if (favs.has(routeId)) {
+        favs.delete(routeId); // Remove if exists
+    } else {
+        favs.add(routeId);    // Add if new
+    }
+    
+    // Save back to browser
+    localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(Array.from(favs)));
+    
+    // Force the list to refresh immediately so the item jumps to top/bottom
+    availableRoutes.clear(); // This trick forces 'updateRouteDropdown' to rebuild
+    updateRouteDropdown(currentBusData);
+}
+
     //Function to show error detail
-    function showErrorDetail() {
+function showErrorDetail() {
     const title = translations[currentLang].errorTitle;
     const msg = translations[currentLang].errorMessage;
     alert(`${title}\n\n${msg}`);
@@ -341,8 +367,8 @@ searchInput.addEventListener('input', (e) => {
     const items = document.querySelectorAll('.route-item');
     
     items.forEach(item => {
-        const routeId = item.getAttribute('data-route');
-        if (routeId.toLowerCase().includes(term)) {
+        // Search inside the whole text of the item (Number + Name)
+        if (item.innerText.toLowerCase().includes(term)) {
             item.style.display = 'flex';
         } else {
             item.style.display = 'none';
@@ -385,27 +411,42 @@ function toggleRoute(routeId, isChecked) {
 
 // 5. Build the Dropdown List
 function updateRouteDropdown(buses) {
-    // Get routes currently active on the road
+    // 1. Get routes currently active on the road
     const liveRoutes = new Set(buses.map(b => b.routeId));
 
-    // Get ALL routes from our static file (The Master List)
-    // If the static file hasn't loaded yet, default to just the live routes
+    // 2. Get ALL routes from our static file
     const staticRouteIds = Object.keys(routeNames);
     const allRouteIds = staticRouteIds.length > 0 ? staticRouteIds : Array.from(liveRoutes);
 
-    // 3. Combine and Sort
+    // ---  Load Favorites ---
+    const favorites = getFavorites();
+
+    // 3. Combine and Sort (Favorites First!)
     const sortedRoutes = allRouteIds.sort((a, b) => {
+        // Check if they are favorites
+        const isFavA = favorites.has(a);
+        const isFavB = favorites.has(b);
+
+        // Priority Rule: Favorites always come first
+        if (isFavA && !isFavB) return -1;
+        if (!isFavA && isFavB) return 1;
+
+        // Secondary Rule: Numeric Sort (Standard)
         const numA = parseInt(a.replace(/\D/g, '')) || 0;
         const numB = parseInt(b.replace(/\D/g, '')) || 0;
         if (numA === numB) return a.localeCompare(b);
         return numA - numB;
     });
 
-    // Check if list needs update (Logic: size changed or static data finally arrived)
-    if (areSetsEqual(new Set(sortedRoutes), availableRoutes) && staticRouteIds.length === 0) return;
+    // Check if list needs update
+    // We strictly check list content. If order changes (due to fav), 'availableRoutes' 
+    // needs to have been cleared by toggleFavorite() to bypass this check.
+    if (areSetsEqual(new Set(sortedRoutes), availableRoutes)) return;
 
     availableRoutes = new Set(sortedRoutes);
     routeList.innerHTML = "";
+
+    const searchTerm = document.getElementById('route-search').value.toLowerCase();
 
     sortedRoutes.forEach(routeId => {
         const div = document.createElement('div');
@@ -413,24 +454,46 @@ function updateRouteDropdown(buses) {
         div.setAttribute('data-route', routeId);
         
         const isChecked = selectedRoutes.has(routeId) ? 'checked' : '';
-        const routeLabel = translations[currentLang].routeLabel; // "Route"
-        
-        // --- NEW: Get the name ---
         const name = routeNames[routeId] || ""; 
-        // e.g., "90 Larry Uteck"
         
+        // --- Determine Star State ---
+        const isFav = favorites.has(routeId);
+        const starClass = isFav ? 'star-btn active' : 'star-btn';
+        const starIcon = isFav ? '★' : '☆'; // Filled vs Empty star character
+
         div.innerHTML = `
+            <span class="${starClass}">${starIcon}</span>
             <input type="checkbox" class="route-checkbox" ${isChecked} value="${routeId}">
             <div class="route-info">
                 <span class="route-number"><b>${routeId}</b></span>
                 <span class="route-desc">${name}</span>
             </div>
         `;
+
+        // Filter Logic
+        if (searchTerm) {
+            const searchContent = (routeId + " " + name).toLowerCase();
+            if (!searchContent.includes(searchTerm)) {
+                div.style.display = 'none';
+            }
+        }
         
+        // --- Event Listeners ---
+        
+        // 1. Click Star -> Toggle Favorite
+        const starBtn = div.querySelector('.star-btn');
+        starBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Stop click from checking the box
+            toggleFavorite(routeId);
+        });
+
+        // 2. Click Checkbox -> Toggle Route on Map
         const checkbox = div.querySelector('input');
         checkbox.addEventListener('change', (e) => toggleRoute(routeId, e.target.checked));
+
+        // 3. Click Row -> Toggle Checkbox
         div.addEventListener('click', (e) => {
-            if (e.target !== checkbox) {
+            if (e.target !== checkbox && e.target !== starBtn) {
                 checkbox.checked = !checkbox.checked;
                 toggleRoute(routeId, checkbox.checked);
             }

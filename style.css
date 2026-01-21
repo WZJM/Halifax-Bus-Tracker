@@ -289,7 +289,6 @@ html, body {
     color: #333;
     background: transparent; /* Ensures no white background glitch */
     
-    /* FIX: Removes default browser spacing that makes it too tall */
     margin: 0;
     padding: 0;
 }
@@ -323,9 +322,9 @@ html, body {
 
 /* Individual Route Item */
 .route-item {
-    padding: 10px 15px;
-    display: flex;
-    align-items: center;
+    padding: 12px 15px;      /* Slightly more breathing room */
+    display: flex;           /* Flexbox aligns everything in a row */
+    align-items: center;     /* Critical: Vertically centers items perfectly */
     cursor: pointer;
     transition: background 0.2s;
     border-bottom: 1px solid #eee;
@@ -356,17 +355,51 @@ html, body {
 }
 
 .route-checkbox {
-    margin-right: 15px;
-    width: 18px;
-    height: 18px;
+    /* Alignment & Spacing */
+    margin: 0 15px 0 0;      /* Reset browser default margins, add space to right */
+    
+    /* Size: Force it to be bigger to match the star */
+    width: 20px;             
+    height: 20px;            
+    
     cursor: pointer;
-    accent-color: #3498db; /* Blue checkmark */
+    accent-color: #3498db;   /* Blue checkmark color */
+    
+    flex-shrink: 0;          /* Prevents checkbox from squishing */
 }
 
 .route-name {
     font-size: 15px;
     color: #333;
     font-weight: 500;
+}
+
+/* Star (Favorite) Button */
+.star-btn {
+    font-size: 26px;         /* Big and visible */
+    color: #ccc;
+    cursor: pointer;
+    
+    /* Alignment Fixes */
+    margin-right: 12px;
+    margin-bottom: 3px;    /* Slight nudge down for optical centering */      
+    line-height: 1;          /* Removes extra vertical space around the character */
+    display: flex;           /* Helps center the character inside its own box */
+    align-items: center;     /* Vertically center the star icon */
+    flex-shrink: 0;          /* Prevents star from squishing on small screens */
+    
+    transition: transform 0.1s ease-in-out;
+    user-select: none;
+}
+
+/* When active (favorited) */
+.star-btn.active {
+    color: #f1c40f;        /* Gold color */
+}
+
+/* Little pop animation on click */
+.star-btn:active {
+    transform: scale(1.2) translateY(1px); /* Keep the nudge during animation */
 }
 
 /* =========================================
