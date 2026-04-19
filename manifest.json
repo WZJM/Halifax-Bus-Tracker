@@ -1,0 +1,21 @@
+{
+  "name": "Halifax Bus Tracker",
+  "short_name": "HRM Buses",
+  "description": "Real-time bus tracking for Halifax Transit.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#2c3e50",
+  "theme_color": "#2c3e50",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
