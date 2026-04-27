@@ -37,10 +37,17 @@ This project visualizes real-time GTFS (General Transit Feed Specification) data
 └── README.md       # Project documentation
 ```
 
+
+## ℹ️🅱️ IB CAS Project
+This website servers as a part of my **IB CAS** (Creativity, Activity, and Service) portfolio.
+* **Creativity**: Designing the user interface, architecting the Progressive Web App (PWA) logic, and writing the front-end and back-end code to solve real-time data challenges.
+* **Service**: Developing and maintaining a free, highly accessible, and ad-free transit tool to help commuters in the local Halifax community navigate the city more efficiently.
+
+
 ## 📄 Credits & Data
 
 * **Data Source:** [Halifax Open Data (GTFS API)](https://www.halifax.ca/home/open-data)
 * **Map Tiles:** &copy; [OpenStreetMap](https://www.openstreetmap.org/copyright) Contributors.
 
 ---
-*Created by [WZJM](https://github.com/WZJM).*
+*Created by [WZJM(Joshua Wu)](https://github.com/WZJM).*

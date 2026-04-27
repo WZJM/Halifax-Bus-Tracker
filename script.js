@@ -13,7 +13,10 @@ const translations = {
         locationPopup: "You are here",
         locationNotSupportedAlert: "Geolocation is not supported by your browser",
         locationAlert: "Unable to retrieve your location. Please check your browser permissions.",
-        searchPlaceholder: "Search Route (e.g. 1, 90)..."
+        searchPlaceholder: "Search Route (e.g. 1, 90)...",
+        dirLabel: "Direction",
+        inbound: "Inbound",
+        outbound: "Outbound"
     },
     fr: {
         navTitle: "Info-bus HRM",
@@ -28,7 +31,10 @@ const translations = {
         locationPopup: "Vous êtes ici",
         locationNotSupportedAlert: "La géolocalisation n'est pas prise en charge par votre navigateur",
         locationAlert: "Impossible de récupérer votre position. Veuillez vérifier les autorisations de votre navigateur.",
-        searchPlaceholder: "Chercher un itinéraire..."
+        searchPlaceholder: "Chercher un itinéraire...",
+        dirLabel: "Direction",
+        inbound: "Aller",
+        outbound: "Retour"
     },
     zh: {
         navTitle: "哈利法克斯公交追踪器",
@@ -43,7 +49,11 @@ const translations = {
         locationPopup: "您在这里",
         locationNotSupportedAlert: "您的浏览器不支持地理位置功能",
         locationAlert: "无法获取您的位置。请检查浏览器权限。",
-        searchPlaceholder: "搜索线路..."
+        searchPlaceholder: "搜索线路...",
+        dirLabel: "方向",
+        inbound: "上行",
+        outbound: "下行"
+
     }
 };
 // Time formating dictionary
@@ -83,7 +93,7 @@ function setLanguage(lang) {
             const busLabel = translations[lang].busLabel;
             
             // Re-create the popup string using the saved busData
-            const newContent = `<b>${routeLabel} ${marker.busData.routeId}</b><br>${busLabel}: ${marker.busData.id}`;
+            const newContent = `<b>${routeLabel} ${marker.busData.routeId}</b><br>${busLabel}: ${marker.busData.id}<br>${dirLabel}: ${dirText}`;
             
             // Update the text immediately
             marker.setPopupContent(newContent);
@@ -219,11 +229,19 @@ async function updateBuses() {
             const routeLabel = translations[currentLang].routeLabel;
             const busLabel = translations[currentLang].busLabel;
             const name = routeNames[bus.routeId] ? ` (${routeNames[bus.routeId]})` : "";
+            const dirLabel = translations[currentLang].dirLabel;
+
+            if (bus.directionId === 0) {
+                dirText = translations[currentLang].outbound;
+            } else if (bus.directionId === 1) {
+                dirText = translations[currentLang].inbound;
+            }
             
             const popupContentBus = `
                 <b>${routeLabel} ${bus.routeId}</b>${name}<br>
+                ${dirLabel}: ${dirText}<br>
                 ${busLabel}: ${bus.id}
-            `;    
+            `;
 
             const customIcon = L.divIcon({
                 className: 'custom-bus-icon-wrapper', 
